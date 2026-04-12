@@ -1,0 +1,47 @@
+name: Daily Contribution
+
+on:
+    schedule:
+        - cron: "0 * * * *" # Runs hourly; script enforces the daily random quota
+    workflow_dispatch:
+
+concurrency:
+    group: contrib-bot
+    cancel-in-progress: false
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.9"
+
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+            - name: Configure Git
+              run: |
+                  git config --global user.name "${{ secrets.COMMIT_USERNAME }}"
+                  git config --global user.email "${{ secrets.COMMIT_EMAIL }}"
+
+            - name: Run Automator Script
+              env:
+                  PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+                  GITHUB_REPOSITORY: ${{ github.repository }}
+                  GH_USERNAME: ${{ secrets.COMMIT_USERNAME }}
+              run: |
+                  python Automator.py
